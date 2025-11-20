@@ -9,13 +9,16 @@ import time
 import uuid
 from _datetime import datetime
 import subprocess
+from sys import prefix
 
 
 class PerformanceTest:
 
-    def __init__(self, server_id, instance_id, input_dir='input', output_dir='output', random_resources=True):
+    def __init__(self, server_id, instance_id, unmonitored_dir='unmonitored', monitored_dir='monitored', random_resources=True):
         self.server_id = server_id
         self.instance_id = instance_id
+        self.unmonitored_dir = unmonitored_dir
+        self.monitored_dir = monitored_dir
         self.random_resources = random_resources
 
         self.pid = os.getpid()
@@ -36,66 +39,55 @@ class PerformanceTest:
 
         self.operation_details = []
 
-        # creating input and output dirs for each instance of PerformanceTest
+        self.unmonitored_files_queue = []
+        self.unmonitored_files_count = 0
+        self.unmonitored_dirs_queue = []
+        self.unmonitored_dirs_count = 0
 
-        self.input_files_path = os.path.join(input_dir, 'files', self.unique_id)
-        self.input_dirs_path = os.path.join(input_dir, 'dirs', self.unique_id)
-        self.output_dirs_path = os.path.join(output_dir, 'dirs', self.unique_id)
-        self.output_files_path = os.path.join(output_dir, 'files', self.unique_id)
+        self.copy_folder = os.path.join(self.monitored_dir, 'copy', self.unique_id)
+        self.read_folder = os.path.join(self.monitored_dir, 'read', self.unique_id)
+        self.write_folder = os.path.join(self.monitored_dir, 'write', self.unique_id)
 
-        self.files_queue = []
-        self.files_count = 0
-        self.files_index = 0
-
-        self.dirs_queue = []
-        self.dirs_count = 0
-        self.dirs_index = 0
-
-        paths = [self.input_files_path, self.input_dirs_path, self.output_dirs_path, self.output_files_path]
-
-        for path in paths:
-            if not os.path.exists(path):
-                os.makedirs(path)
+        # delete operation will delete files from the copy operation
+        self.delete_folder = self.copy_folder
 
         self.collect_resources()
 
     def collect_resources(self):
-        # collecting file objects
+
+        # collecting files
+
         files = [
-            f for f in os.listdir(self.input_files_path)
+            f for f in os.listdir(self.unmonitored_dir)
             if os.path.isfile(
-                os.path.join(self.input_files_path, f)
+                os.path.join(self.unmonitored_dir, f)
             )
         ]
 
         files = sorted(files)
 
-        self.files_queue = files
-        self.files_count = len(self.files_queue)
+        self.unmonitored_files_queue = files
+        self.unmonitored_files_count = len(self.unmonitored_files_queue)
+        self._files_index = 0
 
-        # collecting dir objects
+        # collecting dirs
 
         dirs = [
-            d for d in os.listdir(self.input_dirs_path)
-            if os.path.isdir(
-                os.path.join(self.input_dirs_path, d)
+            f for f in os.listdir(self.unmonitored_dir)
+            if not os.path.isfile(
+                os.path.join(self.unmonitored_dir, f)
             )
         ]
-
         dirs = sorted(dirs)
 
-        self.dirs_queue = dirs
-        self.dirs_count = len(self.dirs_queue)
+        self.unmonitored_dirs_queue = dirs
+        self.unmonitored_dirs_count = len(self.unmonitored_dirs_queue)
+        self._dirs_index = 0
 
-    def generate_unique_filename(self, prefix, extension):
+    def generate_unique_name(self, prefix, extension):
         timestamp_ns = time.time_ns()
         unique_suffix = f'{timestamp_ns}_{self.pid}_{self._operation_counter:06d}_{uuid.uuid4().hex[:8]}'
         return f'{prefix}_{unique_suffix}{extension}'
-
-    def generate_unique_folder_name(self, prefix):
-        timestamp_ns = time.time_ns()
-        unique_suffix = f'{timestamp_ns}_{self.pid}_{self._operation_counter:06d}_{uuid.uuid4().hex[:8]}'
-        return f'{prefix}_{unique_suffix}'
 
     def measure_time(self, operation_func, op_details, *args, **kwargs):
         start_timestamp = datetime.now().isoformat()
@@ -135,21 +127,21 @@ class PerformanceTest:
 
         return elapsed_time, result, success, error
 
-    def get_next_file(self):
+    def get_next_unmonitored_file(self):
         if self.random_resources:
-            file = random.choice(self.files_queue)
+            selected_file = random.choice(self.unmonitored_files_queue)
         else:
-            file = self.files_queue[self.files_index % self.files_count]
-            self.files_index += 1
-        return file
+            selected_file = self.unmonitored_files_queue[self._files_index % self.unmonitored_files_count]
+            self._files_index += 1
+        return selected_file
 
-    def get_next_dir(self):
+    def get_next_unmonitored_dir(self):
         if self.random_resources:
-            dir = random.choice(self.dirs_queue)
+            selected_dir = random.choice(self.unmonitored_dirs_queue)
         else:
-            dir = self.dirs_queue[self.dirs_index % self.dirs_count]
-            self.dirs_index += 1
-        return dir
+            selected_dir = self.unmonitored_dirs_queue[self._dirs_index % self.unmonitored_dirs_count]
+            self._dirs_index += 1
+        return selected_dir
 
     def test_copy_file(self, implementation='python'):
 
@@ -162,16 +154,16 @@ class PerformanceTest:
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             return result
 
-        filename = self.get_next_file()
+        filename = self.get_next_unmonitored_file()
         name, ext = os.path.splitext(filename)
-        source_file = os.path.join(self.input_files_path, self.get_next_file())
+        source_file = os.path.join(self.unmonitored_dir, filename)
         source_file_size = os.path.getsize(source_file)
 
         destination_file = os.path.join(
-            self.output_files_path,
-            self.generate_unique_filename(
+            self.copy_folder,
+            self.generate_unique_name(
                 prefix=f'copied_{name}',
-                extension=f'.{ext}'
+                extension=f'{ext}'
             )
         )
 
@@ -183,8 +175,8 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_copy_file if implementation == 'python' else _system_copy_file
-        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details, src=source_file,
-                                                   dst=destination_file)
+        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details,
+                                                   src=source_file, dst=destination_file)
         self._operation_counter += 1
 
     def test_copy_dir(self, implementation='python'):
@@ -198,12 +190,12 @@ class PerformanceTest:
             result = subprocess.run(cmd, capture_output=True, text=True)
             return result
 
-        dir_name = self.get_next_dir()
-        source_dir = os.path.join(self.input_dirs_path, dir_name)
+        dir_name = self.get_next_unmonitored_dir()
+        source_dir = os.path.join(self.unmonitored_dir, dir_name)
 
         destination_dir = os.path.join(
-            self.output_dirs_path,
-            self.generate_unique_folder_name(prefix=dir_name)
+            self.copy_folder,
+            self.generate_unique_name(prefix=f'copied_{dir_name}', extension='')
         )
 
         operation_details = {
@@ -274,5 +266,7 @@ class PerformanceTest:
             return result
 
     def run(self):
-        self.test_copy_file()
-        self.test_copy_dir()
+        self.test_copy_file(implementation='python')
+        self.test_copy_dir(implementation='python')
+
+        return self.operation_details

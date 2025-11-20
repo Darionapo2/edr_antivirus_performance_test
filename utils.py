@@ -1,4 +1,4 @@
 SERVER_ID = '127.0.0.1'
 INSTANCE_ID = 1
-INPUT_DIR = 'input'
-OUTPUT_DIR = 'output'
+MONITORED_DIR = 'monitored'
+UNMONITORED_DIR = 'unmonitored'

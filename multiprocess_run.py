@@ -35,7 +35,7 @@ def run_concurrent_tests(config, n_instances=8, delay_s=0):
 
             instance_id = futures[future]
 
-            print(instance_id)
+            print(instance_id, 'completed')
 
             result_file = future.result()
             result_files.append(result_file)
@@ -44,15 +44,15 @@ def run_concurrent_tests(config, n_instances=8, delay_s=0):
     print('total time: ', total_time)
 
 
-def run_single_instance(server_id, instance_id, input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, random_resources=False):
+def run_single_instance(server_id, instance_id, monitored_dir=MONITORED_DIR, unmonitored_dir=UNMONITORED_DIR, random_resources=False):
 
     print('Instance Started')
 
     tester = PerformanceTest(
         server_id=server_id,
         instance_id=instance_id,
-        input_dir=input_dir,
-        output_dir=output_dir,
+        monitored_dir=monitored_dir,
+        unmonitored_dir=unmonitored_dir,
         random_resources=random_resources
     )
 
