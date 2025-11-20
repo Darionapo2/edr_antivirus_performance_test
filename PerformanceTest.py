@@ -53,6 +53,25 @@ class PerformanceTest:
 
         self.collect_resources()
 
+        self.logger = self._setup_logger()
+
+    def _setup_logger(self):
+        os.makedirs('logs', exist_ok=True)
+
+        logger = logging.getLogger(self.unique_id)
+        logger.setLevel(logging.INFO)
+
+        # Avoid duplicate handlers
+        if not logger.handlers:
+            fh = logging.FileHandler(f'logs/{self.unique_id}.log', mode="w")
+            fh.setFormatter(logging.Formatter(
+                '%(asctime)s;%(levelname)s;%(name)s;%(message)s'
+            ))
+
+            logger.addHandler(fh)
+
+        return logger
+
     def collect_resources(self):
 
         # collecting files
@@ -168,15 +187,19 @@ class PerformanceTest:
         )
 
         operation_details = {
+            'operation_counter': self._operation_counter,
             'op_type': 'copy_file',
             'size': source_file_size,
-            'operation_counter': self._operation_counter,
-            'path': destination_file
+            'path': source_file
         }
 
         operation_implementation = _python_copy_file if implementation == 'python' else _system_copy_file
+
         elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details,
                                                    src=source_file, dst=destination_file)
+        if success:
+            self.logger.info('Copied file successfully')
+
         self._operation_counter += 1
 
     def test_copy_dir(self, implementation='python'):

@@ -32,9 +32,7 @@ def run_concurrent_tests(config, n_instances=8, delay_s=0):
         print('Waiting for all subprocesses to be done...')
 
         for future in as_completed(futures):
-
             instance_id = futures[future]
-
             print(instance_id, 'completed')
 
             result_file = future.result()
