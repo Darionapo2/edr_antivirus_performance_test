@@ -9,7 +9,7 @@ def scenario1():
         instance_id=INSTANCE_ID
     )
 
-    performance_test.run()
+    performance_test.run_sequentially()
 
 
 def concurrent_instances():

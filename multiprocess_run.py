@@ -54,4 +54,4 @@ def run_single_instance(server_id, instance_id, monitored_dir=MONITORED_DIR, unm
         random_resources=random_resources
     )
 
-    return tester.run()
+    return tester.run_sequentially()
