@@ -16,7 +16,7 @@ from sys import prefix
 class PerformanceTest:
 
     def __init__(self, server_id, instance_id, unmonitored_dir='unmonitored', monitored_dir='monitored',
-                 random_resources=True):
+                 random_resources=False):
         self.server_id = server_id
         self.instance_id = instance_id
         self.unmonitored_dir = unmonitored_dir
@@ -57,6 +57,7 @@ class PerformanceTest:
         self._copy_files_index = 0
         self._copy_dirs_index = 0
         self._move_files_index = 0
+        self._move_dirs_index = 0
         self._edit_files_index = 0
         self._read_files_index = 0
         self._delete_files_index = 0
@@ -117,9 +118,9 @@ class PerformanceTest:
             elif op == 'read':
                 _index = self._read_files_index
                 self._read_files_index += 1
-            elif op == 'move':
-                _index = self._move_files_index
-                self._move_files_index += 1
+            # elif op == 'move':
+            #     _index = self._move_files_index
+            #     self._move_files_index += 1
             elif op == 'write':
                 _index = self._edit_files_index
                 self._edit_files_index += 1
@@ -133,6 +134,8 @@ class PerformanceTest:
 
     def get_next_dir(self, folder, op):
         _, _, dirs, n_dirs = self.collect_resources(folder)
+        print(dirs, n_dirs)
+
         if self.random_resources:
             selected_dir = random.choice(dirs)
         else:
@@ -143,6 +146,9 @@ class PerformanceTest:
             elif op == 'delete':
                 _index = self._delete_dirs_index
                 self._delete_dirs_index += 1
+            elif op == 'move':
+                _index = self._move_files_index
+                self._move_dirs_index += 1
 
             selected_dir = dirs[_index % n_dirs]
 
@@ -307,7 +313,6 @@ class PerformanceTest:
             pass
 
         self._operation_counter += 1
-
 
     def test_edit_text_file(self, implementation='python'):
 

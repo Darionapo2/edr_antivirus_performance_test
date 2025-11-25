@@ -3,13 +3,13 @@ from multiprocess_run import run_concurrent_tests
 from utils import *
 
 
-def scenario1():
+def scenario_no_multithreading():
     performance_test = PerformanceTest(
         server_id=SERVER_ID,
         instance_id=INSTANCE_ID
     )
 
-    performance_test.run_sequentially()
+    performance_test.run_sequentially(iterations=2)
 
 
 def concurrent_instances():
@@ -25,6 +25,13 @@ def concurrent_instances():
     ]
 
     run_concurrent_tests(config, n_instances=8, delay_s=0)
+
+def concurrent_instances_debug():
+    config = [
+        {'server_id': SERVER_ID, 'instance_id': INSTANCE_ID}
+    ]
+
+    run_concurrent_tests(config, n_instances=1, delay_s=0)
 
 
 if __name__ == '__main__':

@@ -56,5 +56,5 @@ def run_single_instance(server_id, instance_id, monitored_dir=MONITORED_DIR, unm
         random_resources=random_resources
     )
 
-    operation_details = tester.run_sequentially()
+    operation_details = tester.run_sequentially(iterations=2)
     print(operation_details)
