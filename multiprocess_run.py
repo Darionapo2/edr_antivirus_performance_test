@@ -1,6 +1,8 @@
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing as mp
+from sys import implementation
+
 from PerformanceTest import PerformanceTest
 from utils import *
 
@@ -54,4 +56,5 @@ def run_single_instance(server_id, instance_id, monitored_dir=MONITORED_DIR, unm
         random_resources=random_resources
     )
 
-    return tester.run_sequentially()
+    operation_details = tester.run_sequentially()
+    print(operation_details)

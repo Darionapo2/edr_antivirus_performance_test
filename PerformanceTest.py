@@ -148,39 +148,6 @@ class PerformanceTest:
 
         return selected_dir
 
-    """
-    def collect_resources(self):
-
-        # collecting files
-
-        files = [
-            f for f in os.listdir(self.unmonitored_dir)
-            if os.path.isfile(
-                os.path.join(self.unmonitored_dir, f)
-            )
-        ]
-
-        files = sorted(files)
-
-        self.unmonitored_files_queue = files
-        self.unmonitored_files_count = len(self.unmonitored_files_queue)
-        self._files_index = 0
-
-        # collecting dirs
-
-        dirs = [
-            f for f in os.listdir(self.unmonitored_dir)
-            if not os.path.isfile(
-                os.path.join(self.unmonitored_dir, f)
-            )
-        ]
-        dirs = sorted(dirs)
-
-        self.unmonitored_dirs_queue = dirs
-        self.unmonitored_dirs_count = len(self.unmonitored_dirs_queue)
-        self._dirs_index = 0
-    """
-
     def generate_unique_name(self, prefix, extension):
         timestamp_ns = time.time_ns()
         unique_suffix = f'{timestamp_ns}_{self.pid}_{self._operation_counter:06d}_{uuid.uuid4().hex[:8]}'
@@ -256,12 +223,11 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_copy_file if implementation == 'python' else _system_copy_file
-        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details,
+        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details,
                                                    src=source_file, dst=destination_file)
 
         if success:
-            # TODO: implement logging
-            pass
+            self.logger.info(f'copy_file completed successfully with result: {result}')
         else:
             # TODO: handle error
             pass
@@ -295,11 +261,10 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_copy_dir if implementation == 'python' else _system_copy_dir
-        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details, src=source_dir,
+        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, src=source_dir,
                                                    dst=destination_dir)
         if success:
-            # TODO: implement logging
-            pass
+            self.logger.info(f'copy_dir completed successfully with result: {result}')
         else:
             # TODO: handle errors
             pass
@@ -317,27 +282,26 @@ class PerformanceTest:
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             return result
 
-        source_dir = self.get_next_dir(folder=self.move_folder, op='move')
-        path = os.path.join(self.move_folder, source_dir)
+        dir_name = self.get_next_dir(folder=self.move_folder, op='move')
+        source_dir = os.path.join(self.move_folder, dir_name)
 
         destination_dir = os.path.join(
             self.move_folder,
-            self.generate_unique_name(prefix=f'{source_dir}_moved', extension='')
+            self.generate_unique_name(prefix=f'{dir_name}_moved', extension='')
         )
 
         operation_details = {
             'op_type': 'move_dir',
             'size': None,
             'operation_counter': self._operation_counter,
-            'path': path
+            'path': source_dir
         }
 
         operation_implementation = _python_move_file if implementation == 'python' else _system_move_file
-        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details, src=source_dir,
+        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, src=source_dir,
                                                    dst=destination_dir)
         if success:
-            # TODO: implement logging
-            pass
+            self.logger.info(f'move_file completed successfully with result: {result}')
         else:
             # TODO: handle errors
             pass
@@ -370,11 +334,10 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_edit_text_file if implementation == 'python' else _system_edit_text_file
-        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath,
+        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath,
                                                    text=random_string)
         if success:
-            # TODO: implement logging
-            pass
+            self.logger.info(f'edit_file completed successfully with result: {result}')
         else:
             # TODO: handle errors
             pass
@@ -404,10 +367,10 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_read_text_file if implementation == 'python' else _system_read_text_file
-        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath)
+        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath)
+
         if success:
-            # TODO: implement logging
-            pass
+            self.logger.info(f'read_file completed successfully with result: {result}')
         else:
             # TODO: handle errors
             pass
@@ -436,11 +399,10 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_delete_file if implementation == 'python' else _system_delete_file
-        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath)
+        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath)
 
         if success:
-            # TODO: implement logging
-            pass
+            self.logger.info(f'delete_file completed successfully with result: {result}')
         else:
             # TODO: handle errors
             pass
@@ -468,11 +430,10 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_delete_dir if implementation == 'python' else _system_delete_dir
-        elapsed, _, success, _ = self.measure_time(operation_implementation, operation_details, path=path)
+        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, path=path)
 
         if success:
-            # TODO: implement logging
-            pass
+            self.logger.info(f'delete_dir completed successfully with result: {result}')
         else:
             # TODO: handle errors
             pass
@@ -481,13 +442,13 @@ class PerformanceTest:
 
     def run_sequentially(self, iterations=1):
         for i in range(iterations):
-            self.test_copy_file(implementation='python')
-            self.test_copy_dir(implementation='python')
-            self.test_move_file(implementation='python')
-            self.test_edit_text_file(implementation='python')
-            self.test_read_text_file(implementation='python')
-            # self.test_delete_file(implementation='python')
-            # self.test_delete_dir(implementation='python')
+            self.test_copy_file(implementation='system')
+            self.test_copy_dir(implementation='system')
+            self.test_move_file(implementation='system')
+            self.test_edit_text_file(implementation='system')
+            self.test_read_text_file(implementation='system')
+            self.test_delete_file(implementation='system')
+            self.test_delete_dir(implementation='system')
 
         return self.operation_details
 
