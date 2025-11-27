@@ -1,1 +1,3 @@
 
+
+powershell -ExecutionPolicy Bypass -File "monitoring.ps1"

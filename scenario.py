@@ -1,3 +1,5 @@
+import os
+
 from PerformanceTest import PerformanceTest
 from multiprocess_run import run_concurrent_tests
 from utils import *
@@ -9,7 +11,9 @@ def scenario_no_multithreading():
         instance_id=INSTANCE_ID
     )
 
-    performance_test.run_sequentially(iterations=2)
+    performance_test.reset(input_files_dir='files')
+
+    # performance_test.run_sequentially(iterations=2)
 
 
 def concurrent_instances():
@@ -34,5 +38,11 @@ def concurrent_instances_debug():
     run_concurrent_tests(config, n_instances=1, delay_s=0)
 
 
+def generate_report():
+    pass
+
+
 if __name__ == '__main__':
     concurrent_instances()
+
+    generate_report()

@@ -46,13 +46,16 @@ class PerformanceTest:
         self.write_folder = os.path.join(self.monitored_dir, 'write', self.unique_id)
         self.move_folder = os.path.join(self.monitored_dir, 'move', self.unique_id)
 
-        # delete operation will delete files from the copy operation
-        self.delete_folder = self.copy_folder
+        self.delete_folder = os.path.join(self.monitored_dir, 'delete', self.unique_id)
+
 
         folders = [self.copy_folder, self.read_folder, self.write_folder, self.move_folder, self.delete_folder]
         for folder in folders:
             if not os.path.exists(folder):
                 os.makedirs(folder)
+
+        # delete operation will delete files from the copy operation
+        self.delete_folder = self.copy_folder
 
         self._copy_files_index = 0
         self._copy_dirs_index = 0
@@ -82,6 +85,31 @@ class PerformanceTest:
 
         return logger
 
+    def get_next_file_from_two_folders(self):
+        folder_A = os.path.join(self.move_folder, "A")
+        folder_B = os.path.join(self.move_folder, "B")
+
+        files_A = [f for f in os.listdir(folder_A) if os.path.isfile(os.path.join(folder_A, f))]
+        files_B = [f for f in os.listdir(folder_B) if os.path.isfile(os.path.join(folder_B, f))]
+
+        # Case 1: A has files → move from A to B
+        if len(files_A) > 0:
+            src_folder = folder_A
+            dst_folder = folder_B
+            filename = files_A[0]  # deterministic
+            return os.path.join(src_folder, filename), os.path.join(dst_folder, filename)
+
+        # Case 2: B has files → move from B to A
+        if len(files_B) > 0:
+            src_folder = folder_B
+            dst_folder = folder_A
+            filename = files_B[0]
+            return os.path.join(src_folder, filename), os.path.join(dst_folder, filename)
+
+        # No files
+        print('both folders in move folder are empty')
+        return None
+
     @staticmethod
     def collect_resources(folder):
         # collecting files
@@ -97,7 +125,7 @@ class PerformanceTest:
         # collecting dirs
         dirs = [
             d for d in os.listdir(folder)
-            if not os.path.isfile(
+            if os.path.isdir(
                 os.path.join(folder, d)
             )
         ]
@@ -134,7 +162,6 @@ class PerformanceTest:
 
     def get_next_dir(self, folder, op):
         _, _, dirs, n_dirs = self.collect_resources(folder)
-        print(dirs, n_dirs)
 
         if self.random_resources:
             selected_dir = random.choice(dirs)
@@ -179,6 +206,7 @@ class PerformanceTest:
         elapsed_time = end_time - start_time
 
         detailed_record = {
+            'instance': self.unique_id,
             'operation_id': self._operation_counter,
             'operation_type': op_details['op_type'],
             'file_size': op_details['size'],
@@ -288,6 +316,7 @@ class PerformanceTest:
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             return result
 
+        """
         dir_name = self.get_next_dir(folder=self.move_folder, op='move')
         source_dir = os.path.join(self.move_folder, dir_name)
 
@@ -295,19 +324,24 @@ class PerformanceTest:
             self.move_folder,
             self.generate_unique_name(prefix=f'{dir_name}_moved', extension='')
         )
+        """
+
+        # Decide source and destination (A → B or B → A)
+        source_file, destination_file = self.get_next_file_from_two_folders()
+        file_size = os.path.getsize(source_file)
 
         operation_details = {
             'op_type': 'move_dir',
-            'size': None,
+            'size': file_size,
             'operation_counter': self._operation_counter,
-            'path': source_dir
+            'path': source_file
         }
 
         operation_implementation = _python_move_file if implementation == 'python' else _system_move_file
-        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, src=source_dir,
-                                                   dst=destination_dir)
+        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, src=source_file,
+                                                   dst=destination_file)
         if success:
-            self.logger.info(f'move_file completed successfully with result: {result}')
+            self.logger.info(f'move_file;{source_file} moved to {destination_file}')
         else:
             # TODO: handle errors
             pass
@@ -448,12 +482,25 @@ class PerformanceTest:
     def run_sequentially(self, iterations=1):
         for i in range(iterations):
             self.test_copy_file(implementation='system')
-            self.test_copy_dir(implementation='system')
-            self.test_move_file(implementation='system')
-            self.test_edit_text_file(implementation='system')
-            self.test_read_text_file(implementation='system')
             self.test_delete_file(implementation='system')
+
+            self.test_copy_file(implementation='python')
+            self.test_delete_file(implementation='python')
+
+            self.test_copy_dir(implementation='system')
             self.test_delete_dir(implementation='system')
+
+            self.test_copy_dir(implementation='python')
+            self.test_delete_dir(implementation='python')
+
+            self.test_move_file(implementation='system')
+            self.test_move_file(implementation='python')
+
+            self.test_edit_text_file(implementation='system')
+            self.test_edit_text_file(implementation='python')
+
+            self.test_read_text_file(implementation='system')
+            self.test_read_text_file(implementation='python')
 
         return self.operation_details
 
@@ -481,3 +528,55 @@ class PerformanceTest:
             operation(implementation=implementation)
 
         return self.operation_details
+
+    def reset(self, input_files_dir):
+        copied_files = [f for f in os.listdir(self.copy_folder)]
+
+        print(copied_files)
+
+        input_textfiles = [f for f in os.listdir(input_files_dir) if os.path.splitext(f)[1] == '.txt']
+        input_files = [f for f in os.listdir(input_files_dir) if os.path.isfile(os.path.join(input_files_dir, f))]
+        input_dirs = [d for d in os.listdir(input_files_dir) if os.path.isdir(os.path.join(input_files_dir, d))]
+
+        for f in copied_files:
+            path = os.path.join(self.copy_folder, f)
+            print(path)
+            if os.path.isfile(path):
+                print('is file')
+                os.remove(path)
+            else:
+                shutil.rmtree(path)
+
+        moved_files = [f for f in os.listdir(self.move_folder)]
+        written_files = [f for f in os.listdir(self.write_folder)]
+        delete_files = [f for f in os.listdir(self.delete_folder)]
+        read_files = [f for f in os.listdir(self.read_folder)]
+
+        for f in moved_files:
+            shutil.rmtree(os.path.join(self.move_folder, f))
+
+        for f in written_files:
+            os.remove(os.path.join(self.write_folder, f))
+
+        for f in delete_files:
+            os.remove(os.path.join(self.delete_folder, f))
+
+        for f in read_files:
+            os.remove(os.path.join(self.read_folder, f))
+
+        for f in input_textfiles:
+            shutil.copy2(os.path.join(input_files_dir, f), os.path.join(self.read_folder, f))
+            shutil.copy2(os.path.join(input_files_dir, f), os.path.join(self.write_folder, f))
+
+        os.makedirs(os.path.join(self.move_folder, 'A'), exist_ok=True)
+        os.makedirs(os.path.join(self.move_folder, 'B'), exist_ok=True)
+        for f in input_files:
+            shutil.copy2(os.path.join(input_files_dir, f), os.path.join(self.move_folder, 'A', f))
+
+            # comment this part if the file to delete are taken from the copy folder
+            # shutil.copy2(os.path.join(input_files_dir, f), os.path.join(self.delete_folder, f))
+
+
+        # comment this part if the file to delete are taken from the copy folder
+        # for f in input_dirs:
+        #     shutil.copytree(os.path.join(input_files_dir, f), os.path.join(self.delete_folder, f))
