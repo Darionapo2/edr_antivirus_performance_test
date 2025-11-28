@@ -15,13 +15,14 @@ from sys import prefix
 
 class PerformanceTest:
 
-    def __init__(self, server_id, instance_id, unmonitored_dir='unmonitored', monitored_dir='monitored',
+    def __init__(self, server_id, instance_id, run_id, unmonitored_dir='unmonitored', monitored_dir='monitored',
                  random_resources=False):
         self.server_id = server_id
         self.instance_id = instance_id
         self.unmonitored_dir = unmonitored_dir
         self.monitored_dir = monitored_dir
         self.random_resources = random_resources
+        self.run_id = run_id
 
         self.pid = os.getpid()
         self.hostname = socket.gethostname()
@@ -66,17 +67,29 @@ class PerformanceTest:
         self._delete_files_index = 0
         self._delete_dirs_index = 0
 
+        # Think time setup.
+        # This configuration allow to generate a think time of random value in seconds between
+        # max = avg_time_s * (1 + max_perc); min = avg_time_s * (1 - min_perc)
+        self.operation_avg_time_s = 1
+        self.operation_max_perc = 0.5
+        self.operation_min_perc = 0.5
+
+        self.iteration_avg_time_s = 1
+        self.iteration_max_perc = 0.5
+        self.iteration_min_perc = 0.5
+
         self.logger = self._setup_logger()
 
     def _setup_logger(self):
-        os.makedirs('logs', exist_ok=True)
+        run_dir_logs = os.path.join('logs', self.run_id)
+        os.makedirs(run_dir_logs, exist_ok=True)
 
         logger = logging.getLogger(self.unique_id)
         logger.setLevel(logging.INFO)
 
         # Avoid duplicate handlers
         if not logger.handlers:
-            fh = logging.FileHandler(f'logs/{self.unique_id}.log', mode="w")
+            fh = logging.FileHandler(os.path.join(run_dir_logs, f'{self.unique_id}.log'), mode="w")
             fh.setFormatter(logging.Formatter(
                 '%(asctime)s;%(levelname)s;%(name)s;%(message)s'
             ))
@@ -225,6 +238,39 @@ class PerformanceTest:
 
         return elapsed_time, result, success, error
 
+    def sleep_think_time(self, use='op'):
+        avg_time_s = 0
+        min_perc = 0
+        max_perc = 0
+
+        if use == 'op':
+            avg_time_s = self.operation_avg_time_s
+            min_perc = self.operation_min_perc
+            max_perc = self.operation_max_perc
+        elif use == 'iteration':
+            avg_time_s = self.iteration_avg_time_s
+            min_perc = self.iteration_min_perc
+            max_perc = self.iteration_max_perc
+
+        if avg_time_s == 0:
+            return 0
+
+        min_s = avg_time_s * (1 - min_perc)
+
+        if min_s < 0:
+            min_s = 0
+
+        max_s = avg_time_s * (1 + max_perc)
+
+        if min_s > max_s:
+            print('Error sleep_think_time: min_s > max_s')
+            return 0
+
+        time_s = random.uniform(min_s, max_s)
+        self.logger.info(f'sleep_think_time;think_time={time_s};use={use}')
+        time.sleep(time_s)
+        return time_s
+
     def test_copy_file(self, implementation='python'):
 
         def _python_copy_file(src, dst):
@@ -257,16 +303,18 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_copy_file if implementation == 'python' else _system_copy_file
-        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details,
+        elapsed, result, success, error = self.measure_time(operation_implementation, operation_details,
                                                    src=source_file, dst=destination_file)
 
-        if success:
-            self.logger.info(f'copy_file completed successfully with result: {result}')
-        else:
+
+        self.logger.info(f'test_copy_file;src={source_file};dst={destination_file};filesize={source_file_size};elapsed={elapsed};success={success}')
+
+        if not success:
+            self.logger.error(f'test_copy_file;src={source_file};dst={destination_file};filesize={source_file_size};success={success};result={result};error={error}')
             # TODO: handle error
-            pass
 
         self._operation_counter += 1
+        self.sleep_think_time()
 
     def test_copy_dir(self, implementation='python'):
 
@@ -295,15 +343,16 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_copy_dir if implementation == 'python' else _system_copy_dir
-        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, src=source_dir,
+        elapsed, result, success, error = self.measure_time(operation_implementation, operation_details, src=source_dir,
                                                    dst=destination_dir)
-        if success:
-            self.logger.info(f'copy_dir completed successfully with result: {result}')
-        else:
-            # TODO: handle errors
-            pass
+        self.logger.info(f'test_copy_dir;src={source_dir};dst={destination_dir};elapsed={elapsed};success={success}')
+
+        if not success:
+            self.logger.info(f'test_copy_dir;src={source_dir};dst={destination_dir};success={success};result={result};error={error}')
+            # TODO: handle error
 
         self._operation_counter += 1
+        self.sleep_think_time()
 
     def test_move_file(self, implementation='python'):
 
@@ -316,15 +365,6 @@ class PerformanceTest:
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             return result
 
-        """
-        dir_name = self.get_next_dir(folder=self.move_folder, op='move')
-        source_dir = os.path.join(self.move_folder, dir_name)
-
-        destination_dir = os.path.join(
-            self.move_folder,
-            self.generate_unique_name(prefix=f'{dir_name}_moved', extension='')
-        )
-        """
 
         # Decide source and destination (A → B or B → A)
         source_file, destination_file = self.get_next_file_from_two_folders()
@@ -338,15 +378,17 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_move_file if implementation == 'python' else _system_move_file
-        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, src=source_file,
+        elapsed, result, success, error = self.measure_time(operation_implementation, operation_details, src=source_file,
                                                    dst=destination_file)
-        if success:
-            self.logger.info(f'move_file;{source_file} moved to {destination_file}')
-        else:
-            # TODO: handle errors
-            pass
+
+        self.logger.info(f'test_move_file;src={source_file};dst={destination_file};filesize={file_size};elapsed={elapsed};success={success}')
+
+        if not success:
+            self.logger.info(f'test_move_file;src={source_file};dst={destination_file};filesize={file_size};success={success};result={result};error={error}')
+            # TODO: handle error
 
         self._operation_counter += 1
+        self.sleep_think_time()
 
     def test_edit_text_file(self, implementation='python'):
 
@@ -373,15 +415,17 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_edit_text_file if implementation == 'python' else _system_edit_text_file
-        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath,
+        elapsed, result, success, error = self.measure_time(operation_implementation, operation_details, filepath=filepath,
                                                    text=random_string)
-        if success:
-            self.logger.info(f'edit_file completed successfully with result: {result}')
-        else:
-            # TODO: handle errors
-            pass
+
+        self.logger.info(f'test_edit_text_file;src={filepath};filesize={file_size};elapsed={elapsed};success={success}')
+
+        if not success:
+            self.logger.info(f'test_edit_text_file;src={filepath};filesize={file_size};success={success};result={result};error={error}')
+            # TODO: handle error
 
         self._operation_counter += 1
+        self.sleep_think_time()
 
     def test_read_text_file(self, implementation='python'):
 
@@ -406,15 +450,17 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_read_text_file if implementation == 'python' else _system_read_text_file
-        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath)
+        elapsed, result, success, error = self.measure_time(operation_implementation, operation_details, filepath=filepath)
 
-        if success:
-            self.logger.info(f'read_file completed successfully with result: {result}')
-        else:
-            # TODO: handle errors
-            pass
+        self.logger.info(f'test_read_text_file;src={filepath};filesize={file_size};elapsed={elapsed};success={success}')
+
+        if not success:
+            self.logger.info(f'test_read_text_file;src={filepath};filesize={file_size};success={success};result={result};error={error}')
+            # TODO: handle error
+
 
         self._operation_counter += 1
+        self.sleep_think_time()
 
     def test_delete_file(self, implementation='python'):
 
@@ -438,15 +484,16 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_delete_file if implementation == 'python' else _system_delete_file
-        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, filepath=filepath)
+        elapsed, result, success, error = self.measure_time(operation_implementation, operation_details, filepath=filepath)
 
-        if success:
-            self.logger.info(f'delete_file completed successfully with result: {result}')
-        else:
-            # TODO: handle errors
-            pass
+        self.logger.info(f'test_delete_file;src={filepath};filesize={file_size};elapsed={elapsed};success={success}')
+
+        if not success:
+            self.logger.info(f'test_delete_file;src={filepath};filesize={file_size};success={success};result={result};error={error}')
+            # TODO: handle error
 
         self._operation_counter += 1
+        self.sleep_think_time()
 
     def test_delete_dir(self, implementation='python'):
 
@@ -469,17 +516,19 @@ class PerformanceTest:
         }
 
         operation_implementation = _python_delete_dir if implementation == 'python' else _system_delete_dir
-        elapsed, result, success, _ = self.measure_time(operation_implementation, operation_details, path=path)
+        elapsed, result, success, error = self.measure_time(operation_implementation, operation_details, path=path)
 
-        if success:
-            self.logger.info(f'delete_dir completed successfully with result: {result}')
-        else:
-            # TODO: handle errors
+        self.logger.info(f'test_delete_dir;src={path};elapsed={elapsed};success={success}')
+
+        if not success:
+            self.logger.error(f'test_delete_dir;src={path};success={success};result={result};error={error}')
             pass
 
         self._operation_counter += 1
+        self.sleep_think_time()
 
     def run_sequentially(self, iterations=1):
+        print('iterations:', iterations)
         for i in range(iterations):
             self.test_copy_file(implementation='system')
             self.test_delete_file(implementation='system')
@@ -501,6 +550,8 @@ class PerformanceTest:
 
             self.test_read_text_file(implementation='system')
             self.test_read_text_file(implementation='python')
+
+            self.sleep_think_time(use='iteration')
 
         return self.operation_details
 
