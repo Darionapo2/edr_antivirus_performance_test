@@ -25,7 +25,7 @@ def start_monitoring():
 
     # CSV header
     headers = [
-        "Timestamp", "% Processor Time", "% Idle Time",
+        "Timestamp ns", "Timestamp", "% Processor Time", "% Idle Time",
         "CPU0", "CPU1", "CPU2", "CPU3", "CPU4", "CPU5", "CPU6", "CPU7", "CPU8", "CPU9", "CPU10", "CPU11",
         "Available MBytes", "Copy Read Hits %", "% Disk Time",
         "Disk Read Bytes/sec", "Disk Write Bytes/sec",
@@ -39,13 +39,14 @@ def start_monitoring():
     ]
 
     # Create file and write header
-    with open(output_file, "w", newline="") as f:
+    with open(output_file, "a", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(headers)
 
     print("Monitoring started... CTRL+C to stop")
 
     while True:
+        timestamp_ns = time.time_ns()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # CPU (total)
@@ -68,6 +69,7 @@ def start_monitoring():
         smb = target_share
 
         row = [
+            timestamp_ns,
             timestamp,
             cpu_total.PercentProcessorTime,
             cpu_total.PercentIdleTime,

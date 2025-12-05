@@ -92,7 +92,7 @@ def run_single_instance(server_id, instance_id, run_id, monitored_dir=MONITORED_
     tester.reset(input_files_dir='files')
 
     # Setup here the number of iterations
-    operation_details = tester.run_sequentially(iterations=5)
+    operation_details = tester.run_sequentially(iterations=3)
 
     run_dir_testdata = os.path.join('testdata', run_id)
 

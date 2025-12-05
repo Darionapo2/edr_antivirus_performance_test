@@ -28,13 +28,13 @@ def concurrent_instances():
     os.makedirs(run_dir_logs, exist_ok=True)
 
     config = [
-        {'server_id': SERVER_ID, 'instance_id': INSTANCE_ID, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': '\\\\T14G4-PF4RA1BE\\performance_test_monitored'},
-        {'server_id': '127.0.0.1', 'instance_id': 2, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': '\\\\T14G4-PF4RA1BE\\performance_test_monitored'},
-        {'server_id': '127.0.0.1', 'instance_id': 3, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': '\\\\T14G4-PF4RA1BE\\performance_test_monitored'},
-        {'server_id': '127.0.0.1', 'instance_id': 4, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': '\\\\T14G4-PF4RA1BE\\performance_test_monitored'},
-        {'server_id': '127.0.0.1', 'instance_id': 5, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': '\\\\T14G4-PF4RA1BE\\performance_test_monitored'},
-        {'server_id': '127.0.0.1', 'instance_id': 6, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': '\\\\T14G4-PF4RA1BE\\performance_test_monitored'},
-        {'server_id': '127.0.0.1', 'instance_id': 7, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': '\\\\T14G4-PF4RA1BE\\performance_test_monitored'},
+        {'server_id': SERVER_ID, 'instance_id': INSTANCE_ID, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': 'C:\\Users\\ZUXT2546_DA\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts\\pocnetapp (10.1.68.50)'},
+        {'server_id': '127.0.0.1', 'instance_id': 2, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': 'C:\\Users\\ZUXT2546_DA\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts\\pocnetapp (10.1.68.50)'},
+        {'server_id': '127.0.0.1', 'instance_id': 3, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': 'C:\\Users\\ZUXT2546_DA\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts\\pocnetapp (10.1.68.50)'},
+        {'server_id': '127.0.0.1', 'instance_id': 4, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': 'C:\\Users\\ZUXT2546_DA\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts\\pocnetapp (10.1.68.50)'},
+        {'server_id': '127.0.0.1', 'instance_id': 5, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': 'C:\\Users\\ZUXT2546_DA\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts\\pocnetapp (10.1.68.50)'},
+        {'server_id': '127.0.0.1', 'instance_id': 6, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': 'C:\\Users\\ZUXT2546_DA\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts\\pocnetapp (10.1.68.50)'},
+        {'server_id': '127.0.0.1', 'instance_id': 7, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': 'C:\\Users\\ZUXT2546_DA\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts\\pocnetapp (10.1.68.50)'},
         {'server_id': '127.0.0.1', 'instance_id': 8, 'run_id': run_id, 'unmonitored_dir': 'unmonitored', 'monitored_dir': '\\\\T14G4-PF4RA1BE\\performance_test_monitored'},
     ]
 
